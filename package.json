@@ -9,7 +9,9 @@
   },
   "author": "",
   "license": "ISC",
-  "dependencies": {},
+  "dependencies": {
+    "systemjs": "^0.21.3"
+  },
   "devDependencies": {
     "lite-server": "^2.3.0"
   }
