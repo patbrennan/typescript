@@ -1,1 +1,3 @@
-console.log("It works!");
+import "jquery";
+
+$(".app").css({"background-color": "green"});

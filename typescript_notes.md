@@ -1004,21 +1004,555 @@ console.log(Rectangle.calcRectangle(10, 10));
 
 Ts will automatically figure out when resolving imports: It sees a relative or absolute path, and will auto look up with either import syntax - the other being: `import { Component } from "@angular/core";`. The absolute path will always be looked up in the `node_modules` folder by default. You can set up global exports using this second syntax to make it available in your application.
 
+## Contract Work w/Interfaces
+
+### Interfaces
+
+A way to guarantee in your code that certain properties or methods are available. If they are not, Ts will throw an error during compilation.
+
+Interfaces don't actually get compiled into Js. They are simply there to check your code & give you errors if you make one during development.
+
+```javascript
+// person should be obj w/name prop whose value is string
+// it can have more than that, but it should at least contain what is specified
+// This will allow Ts to throw an error upon compilation
+function greet(person: {name: string}) {
+  console.log("Hello, " + person.name);
+}
+
+const person = {
+  firstName: "Bro",
+  age: 32
+};
+
+greet(person);
+
+// what if we had to define the interface twice, for another function? Keep it DRY. Instead, use the interface keyword:
+
+interface NamedPerson {
+  // define requirements here
+  firstName: string;
+}
+// now write:
+function changeName(person: NamedPerson) {
+  // ...some code
+}
+```
+
+When directly passing object literals, Ts does a much stricter check, and will throw an error, saying that "age" is not defined in NamedPerson. This doesn't happen when compared to passing a perviously instantiated object. This is illustrated below.
+
+Also illustrated: optional properties in the interface. This allows more flexibility.
+
+Also, what if there is an object where you don't know the name of properties in advance? You don't want errors, so you can use:
+
+```javascript
+greet({firstName: "Bro", age: 32}); //throws error because obj literal
+
+// define interface w/optional properties
+interface NamedPerson {
+  firstName: string;
+  age?: number; // optional property w/? denotation
+  // don't know property in advance:
+  [propName: string]: any; // propName can be anything, but must be type string
+}
+
+const person = {
+  firstName: "Bro",
+  hobbies: ["cooking", "flying", "coding"]
+};
+
+// Ts will not throw an error because we have properly created dynamic properties
+greet(person);
+```
+
+Include a requirement that an object has a method:
+
+```javascript
+interface NamedPerson {
+  //... other code
+  greet(lastName: string): void;
+}
+
+// Ts will show errors if it doesn't contain a greet method
+```
+
+Working with classes, we could define a class using the `implements` keyword, and Ts will check to make sure it conforms (less any optional properties/methods):
+
+```javascript
+class Person implements NamedPerson {
+  firstName: string;
+  greet(lastName: string): void {
+    console.log(`Hi, I'm ${this.firstName} ${lastName}`);
+  }
+}
+
+const myPerson = new Person();
+myPerson.firstName = "Patrick";
+greet(myPerson);
+myPerson.greet("Brennan");
+```
+
+If we were to implement something in the class that isn't included in the interface, it will compile without an error. The interface simply checks to make sure you at least have what is required in the interface definition.
+
+### Function Types in Interfaces
+
+```javascript
+// function types
+interface DoubleValueFunc {
+  (number1: number, number2: number): number;
+}
+
+let myDoubleFunction: DoubleValueFunc;
+myDoubleFunction = (value1: number, value2: number) {
+  return (value1 + value2) * 2;
+}
+```
+
+### Interface Inheritance
+
+```javascript
+// will require methods/properties set up in NamedPerson, plus as defined
+interface AgedPerson extends NamedPerson {
+  age: number; // now required for AgedPerson
+}
+
+const oldPerson: AgedPerson = {
+  age: 55,
+  firstName: "Oldy",
+  greet(lastName: string) {
+    console.log("Heeeeey");
+  }
+}
+```
+
+## Generics
+
+Generics are components that can work over a variety of types, rather than a single one. This allows us to use our own types with these components. However, with generics, we still want the program to be aware of the desired data types that may be returned & such, so we can get compilation errors if something is amiss.
+
+```javascript
+// simple generic
+function echo(data: any) {
+  return data;
+}
+
+// better generic
+function betterEcho<T>(data: T) { // USE: <anyChar>, then (arg: anyChar)
+  return data;
+}
+
+console.log(betterEcho("BREH").length);
+console.log(betterEcho(32).length);   // Now Ts knows types, will throw error
+console.log(betterEcho({name: "BREH"}));
+```
+
+Ts will infer the type you are using with the function, and not allow you to perform operations that aren't allowed. You can also explicitly state the type when using the function: `betterEcho<number>(55);`
+
+```javascript
+// built-in generics
+const testResults: Array<number> = [1.94, 2.33];
+testResults.push(-2.99);
+testResults.push("string"); // Ts complains
+
+// arrays & generics
+// here we don't know type of values in the array. we just know it'll be array
+function printAll<T>(args: T[]) {
+  args.forEach((el) => console.log(el));
+}
+
+// being explicit during invocation
+printAll<string>(["Apples", "Bananas", "Oranges"]);
+printAll<number>([2, 4.55, 4.33]);
+
+// generic types:
+// create new const & assign a generic type, being a generic function
+// <T>(data: T) => T is the generic type of function
+const echo2: <T>(data: T) => T = echo;
+```
+### generic classes with constraints
+
+```javascript
+// generic classes with constraints
+
+// denotes a generic class with contraints. ALL values that use "T" must conform to the type specified
+class SimpleMath<T extends number | string> { // constraints after extends
+  baseValue: T;
+  multiplyValue: T;
+  calculate(): number {
+    // + specifically casts values as a number
+    return +this.baseValue * +this.multiplyValue;
+  }
+}
+
+let simpleMath = new SimpleMath<number>();
+simpleMath.baseValue = "string";
+simpleMath.multiplyValue = 20;
+simpleMath.calculate(); // tsc will show an error now
+
+simpleMath = new SimpleMath<string>();
+simpleMath.baseValue = "20";
+simpleMath.multiplyValue = "10";
+simpleMath.calculate(); // tsc will NOT error; all types the same & match string
+
+simpleMath = new SimpleMath<boolean>(); // does NOT satisfy contraints
+```
+
+In the example above, what if you wanted to be more flexible & allow multiple types in the class declaration, so you could use multiple types?
+
+```javascript
+// Using "U" is just convention - going in alphabetical order.
+
+// T has to be the same type as U
+class SimpleMath<T extends U, U extends number | string> {}
+
+// T can only be a number
+class SimpleMath<T extends number, U extends number | string> {}
+
+// T can be any type
+class SimpleMath<T, U extends number | string> { }
+
+// T & U can be either or
+class SimpleMath<T extends number | string, U extends number | string> {
+  baseValue: T;
+  multiplyValue: U;
+  calculate(): number {
+    // + specifically casts values as a number
+    return +this.baseValue * +this.multiplyValue;
+  }
+}
+
+// first value must be string, second value number
+const simpleMath = new SimpleMath<string, number>();
+simpleMath.baseValue = "5";
+simpleMath.multiplyValue = 20;
+simpleMath.calculate(); // 100
+```
+
+Excercise:
+
+Create a generic Map (an Object like an Array, but instead with Key-Value Pairs). The key will always be a string.
+
+Let's keep it simple and only add the following methods to the Map:
+
+```javascript
+setItem(key: string, item: T) // should create a new key-value pair
+
+getItem(key: string) // should retrieve the value of the provided key
+clear() // should remove all key-value pairs
+printMap() // should output key-value pairs
+The map should be usable like shown below:
+
+const numberMap = new MyMap<number>();
+numberMap.setItem('apples', 5);
+numberMap.setItem('bananas', 10);
+numberMap.printMap();
+
+const stringMap = new MyMap<string>();
+stringMap.setItem('name', "Max");
+stringMap.setItem('age', "27");
+stringMap.printMap();
+```
+
+Solution:
+
+```javascript
+class MyMap<T> {
+  // here, "key" can be any name - it's the dynamic property, but it's value
+  // MUST be of type "T". It's inititalized as an empty object.
+  private map: {[key: string]: T} = {};
+
+  setItem(key: string, item: T) {
+    this.map[key] = item;
+  }
+
+  getItem(key: string) {
+    return this.map[key]
+  }
+
+  clear() {
+    this.map = {};
+  }
+
+  printMap() {
+    for (let key in this.map) {
+      console.log(key, this.map[key]);
+    }
+  }
+}
+
+const numberMap = new MyMap<number>();  // can be any data type
+numberMap.setItem("apples", 10);        // all vals must be the same type
+numberMap.setItem("bananas", 2);
+console.log(numberMap.getItem("apples"));
+numberMap.printMap();
+numberMap.clear();
+```
+
+Remember, now Ts gives support for understanding what data it should see, throwing errors & linting if something is wrong.
+
+## Decorators
+
+These are functions that can be attached to classes, methods, properties, that will transform them. They allow you to extend classes. Decorators provide a way to add both annotations and a meta-programming syntax for class declarations and members.
+
+Make sure that in `tsconfig.json` you set `"experimentalDecorators": true` so you don't keep getting the Ts warning during compilation.
+
+```javascript
+// class decorators
+// the decorator is a function - Ts passes the constructor function as the
+// argument to this function when it's a class decorator
+function logged(constructorFn: Function) {
+  console.log(constructorFn);
+}
+
+// Attach the decorator to the class:
+@logged
+class Person {
+  constructor() {
+    console.log("Hi");
+  }
+}
+
+// Decorator Factories
+// Let's say you want to decide whether the car below gets printed to console or
+// not, but you can't pass anything other than constructor function to decorator.
+function logging(value: boolean) {
+  return value ? logged : null;
+}
+
+@logging(true);  // attach the result of this function execution
+class Car {
+
+}
+
+// Creating a useful decorator (advanced)
+
+// Any class instantiated w/the printable decorator will automatically have the
+// print method, which will allow the object to print itself to the console.
+function printable(constructorFn: Function) {
+  constructorFn.prototype.print = () => {
+    console.log(this);
+  }
+}
+
+@logging(true)  // using factory with multiple decorators
+@printable
+class Plant {
+  name = "Green Plant";
+}
+const fern = new Plant();
+(<any>plant).print(); // must explicitly state "any" type - Ts bug
+```
+
+> Refer to the [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/decorators.html) when in doubt for more good examples & explanations of various topics, including decorators.
+
+### Method, Property, & Parameter Decorators
+
+```javascript
+// method decorators
+
+// we want to write a decorator that makes the calcBudget method editable or not
+function editable(value: boolean) { // method decorator
+  // "target" below depends on whether it is a static class or instantiated one
+  return function(target: any, name: string, descriptor: PropertyDescriptor) {
+    // what is a descriptor? It's an object that sets options for another object,
+    // such as whether it's writable, enumerable, etc.
+    descriptor.writable = value;
+  }
+}
+
+function overwritable(value: boolean) { // property decorator
+  return function(target: any, propName: string): any {  // no descriptor here
+    const newDescriptor: PropertyDescriptor = {
+      writable: value;
+    };
+
+    // if returning a new descriptor, you need to use "any" in the function
+    // defintion as the return value
+    return newDescriptor;
+  }
+}
+
+class Project {
+  @overwritable(false); // property decorator
+  name: string;
+
+  constructor(name: string) {
+    this.name = name;
+  }
+
+  @editable(false)  // method decorator
+  calcBudget() {
+    console.log(1000);
+  }
+}
+
+const project = new Project("Learn TypeScript");
+// won't work because of method decorator modifying descriptor:
+project.calcBudget = () => console.log(2000);
+```
+
+The property decorator example above is a bit contrived. Usually, you might use property decorators as a listener to read values & react to it. I.E., when something changes "state".
+
+```javascript
+// parameter decorators
+// funcName(target: type(static/instantiated), methodName, targetParamIdx)
+function printInfo(target: any, methodName: string, paramIndex: number) {
+  console.log(`Target: ${target}`);
+  console.log(`Method Name: ${methodName}`);
+  console.log(`paramIndex: ${paramIndex}`);
+}
+
+class Course {
+  name: string;
+
+  constructor(name: string) {
+    this.name = name;
+  }
+
+  // prepend the decorator right before the argument
+  printStudentNums(mode: string, @printInfo printAll: boolean) {
+    if (printAll) {
+      console.log(10000);
+    } else {
+      console.log(2000);
+    }
+  }
+}
+
+const course = new Course();
+course.printStudentNums("whatever", true);
+course.printStudentNums("whatever", false);
+```
+
+### Using JavaScript libraries w/TypeScript
+
+Ts allows us to import & compile/translate non-Ts enabled libraries so we have all the Ts features available to us with those libraries. Otherwise, we would lose all of the Ts functionality available when we imported these libraries.
+
+### Installing a 3rd-party library
+
+1. Install the library (ex: jQuery): CLI: `npm install --save jquery` - will install into `node_modules` folder.
+2. Using SystemJs, edit the file in your app's html template as below. The `map` property allows us to map any package's path so we can simply refer to the name of it in our imports.
+
+```html
+<!-- before closing body tag -->
+    <script>
+      // set our base URL reference path
+      SystemJS.config({
+        map: {  // use "ALIAS": "path/to/package.js"
+          "jQuery": "node_modules/jquery/dist/jquery.min.js"
+        },
+        baseURL: '/',
+        defaultJsExtensions: true
+      });
+      SystemJS.import("app.js");
+    </script>
+```
 
 
+3. Import the library: `import "jQuery"`
 
+```javascript
+// app.ts
+import "jQuery";
 
+$(".app").css({"background-color": "green"});
+```
 
+4. Ts compiles your files, but may still log an error during compilation. We must create a *definition file* that will translate between Ts & the packages. It translates from Js to Ts. These end in `.d.ts`. Read more about this in the Ts documentation & handbook, under writing definition files. This can be a very cumbersome step in the process! There are alternatives.
 
+#### Option 1: Manually download Ts definition file
 
+There are people who already wrote these files.
 
+- Search `definitely typed` on google, and go to [the github repo](https://github.com/DefinitelyTyped/DefinitelyTyped).
+- Find the specific library defintion you're looking for, and the file w/extension `.d.ts`.
+- Copy the raw contents to a new file in your project folder named `jquery.d.ts`.
+- Ts will automatically find this file & user it during compilation.
 
+#### Option 2: Managing Ts Defition files w/the "typings" Package (or similar)
 
+> **UPDATE**: npm @types is now favored for Ts 2.0+. New syntax can be found at the [definitely typed repo](https://github.com/DefinitelyTyped/DefinitelyTyped) and the [Ts handbook page](http://www.typescriptlang.org/docs/handbook/declaration-files/consumption.html) detailing it.
 
+> Searching for types definition packages can be done easily using [TypeSearch](https://microsoft.github.io/TypeSearch/).
 
+- Use `npm install --save @types/package_name` to install your package.
 
+## TypeScript Workflows
 
+### `tsc` & the `tsconfig` file
 
+w/pure Ts workflow: Pure Ts would mainly just use the `tsc` command. You can add `tsc -w` to the command so Ts watches all .ts files for changes, which will trigger recompilation.
 
+You must also understand how `tsconfig.json` works. Mainly, note the `exclude` option in that file. This tells the compiler to compile all `.ts` files in the project folder & sub-folders except what is listed there (normally something like `node_modules` folder, for example). Recall that definition files (`.d.ts`) will also be included (but not compiled), which is how Ts knows how to work w/the rest of the project.
+
+If you want to explicitly tell Ts what to include (and ONLY include), you could use:
+
+```javascript
+// tsconfig.json
+{
+  // ...other json above
+  "files": [
+    "app.ts",
+    "./typings/index.d.ts"
+    // other files to include
+  ]
+}
+```
+
+**NOTE** that if you run `tsc app.ts`, Ts will not compile other project files & may throw errors, because the `tsconfig` file is not used.
+
+What if you had a `config` folder, and the `tsconfig` was contained in it? Specify `tsc -p path/to/tsconfig.json`.
+
+### Adding Ts to Gulp Workflow
+
+> see official documentation for more details.
+
+Run `npm install --save-dev gulp gulp-typescript`. This will allow you to use `gulp` to compile your code.
+
+1. Add `gullpfile.js` to your project folder & edit as follows:
+
+```javascript
+// gulpfile.js:
+var ts = require("gulp-typescript");
+var gulp = require("gulp");
+
+// allows usage of tsconfig
+var tsProject = ts.createProject("tsconfig.json");
+
+// adds gulp tasks
+gulp.task("typescript", function() {
+    // don't specify source so it uses auto file resolving per tsconfig
+    // telling gulp to use tsconfig & resolve files automatically
+    // then use Ts compiler using tsconfig options
+    // output it in the root folder (empty string)
+    return tsProject.src()
+        .pipe(ts(tsProject))
+        .pipe(gulp.dest(""));
+});
+
+// watches any .ts files for changes & will run the gulp "typescript" task
+gulp.task("watch", function() {
+    gulp.watch("*.ts", ["typescript"]);
+});
+
+// when you just run gulp, it runs watch mode. More tasks can be specified
+gulp.task("default", ["watch"]);
+
+// **** NEW FILE ****
+// package.json
+{
+  // other options above
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "lite-server",
+    "build": "gulp" // add this line
+  },
+}
+```
+
+Now `npm run build` runs watch mode & will update any chages using gulp.
+
+> For use with WebPack workflows, you can see the [uDemy course lectures](https://www.udemy.com/understanding-typescript/learn/v4/t/lecture/9662290?start=0)
+
+## Ex: Using Ts w/React
 
 

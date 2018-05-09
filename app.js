@@ -1,2 +1,4 @@
 "use strict";
-console.log("It works!");
+Object.defineProperty(exports, "__esModule", { value: true });
+require("jQuery");
+$(".app").css({ "background-color": "green" });

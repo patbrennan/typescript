@@ -2,12 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Practice...</title>
     <link rel="stylesheet" href="">
+    <script src="node_modules/systemjs/dist/system.js"></script>
   </head>
 
   <body>
+    <div class="app">Change me with jQuery!</div>
     Hello!
-    <script src="node_modules/systemjs/dist/system.js"></script>
+    <script>
+      // set our base URL reference path
+      SystemJS.config({
+        map: {
+          "jQuery": "node_modules/jquery/dist/jquery.min.js"
+        },
+        baseURL: '/',
+        defaultJsExtensions: true
+      });
+      SystemJS.import("app.js");
+    </script>
   </body>
 </html>
