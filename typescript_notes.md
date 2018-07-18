@@ -628,7 +628,7 @@ console.log(plant.species); // Furr
 
 ### Static Properties & Methods
 
-You may have a need to create a class or use a constant in a class elsewhere in your program. That's where `static` in TypeScript comes in.
+You may have a need to create a class or use a constant in a class elsewhere in your program. That's where `static` in TypeScript comes in. It allows you to use properties/methods in a class without instantiating the class first (i.e., `new ClassName`).
 
 ```javascript
 class Helpers {
@@ -681,7 +681,7 @@ This is a singleton class, where you only want to have ONE instance during runti
 class OnlyOne {
   private static instance: OnlyOne; // returns self
 
-  private constructor(public name: string) {}   // forces use as singleton
+  private constructor(public name: string) {}   // forces use as singleton - MUST CONTAIN THIS TO BE SINGLETON
 
   // checks if it's already been instantiated.
   static getInstance() {
@@ -1127,7 +1127,7 @@ const oldPerson: AgedPerson = {
 
 ## Generics
 
-Generics are components that can work over a variety of types, rather than a single one. This allows us to use our own types with these components. However, with generics, we still want the program to be aware of the desired data types that may be returned & such, so we can get compilation errors if something is amiss.
+Generics are components that can work over a variety of types, rather than a single one. This allows us to use our own types with these components. However, with generics, we still want the program to be aware of the desired data types that may be returned & such, so we can get compilation errors if something is amiss. This is the entire purpose of generics: To inform Ts of what types we are expecting.
 
 ```javascript
 // simple generic
@@ -1143,6 +1143,8 @@ function betterEcho<T>(data: T) { // USE: <anyChar>, then (arg: anyChar)
 console.log(betterEcho("BREH").length);
 console.log(betterEcho(32).length);   // Now Ts knows types, will throw error
 console.log(betterEcho({name: "BREH"}));
+
+console.log(betterEcho<number>("25")); // Ts will complain - we're explicitly casting the type
 ```
 
 Ts will infer the type you are using with the function, and not allow you to perform operations that aren't allowed. You can also explicitly state the type when using the function: `betterEcho<number>(55);`
@@ -1165,7 +1167,8 @@ printAll<number>([2, 4.55, 4.33]);
 
 // generic types:
 // create new const & assign a generic type, being a generic function
-// <T>(data: T) => T is the generic type of function
+// <T>(data: T) => T is the generic type of function, and we assign it to the echo
+// function (defined earlier in code)
 const echo2: <T>(data: T) => T = echo;
 ```
 ### generic classes with constraints
@@ -1315,12 +1318,11 @@ class Person {
 // Let's say you want to decide whether the car below gets printed to console or
 // not, but you can't pass anything other than constructor function to decorator.
 function logging(value: boolean) {
-  return value ? logged : null;
+  return value ? logged : null; // returns the logged decorator that takes constructor function
 }
 
-@logging(true);  // attach the result of this function execution
+@logging(true)  // attach the result of this function execution
 class Car {
-
 }
 
 // Creating a useful decorator (advanced)
@@ -1339,7 +1341,7 @@ class Plant {
   name = "Green Plant";
 }
 const fern = new Plant();
-(<any>plant).print(); // must explicitly state "any" type - Ts bug
+(<any>fern).print(); // must explicitly state "any" type - Ts bug
 ```
 
 > Refer to the [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/decorators.html) when in doubt for more good examples & explanations of various topics, including decorators.
@@ -1350,18 +1352,21 @@ const fern = new Plant();
 // method decorators
 
 // we want to write a decorator that makes the calcBudget method editable or not
-function editable(value: boolean) { // method decorator
+function editable(value: boolean) { // METHOD decorator as factory
   // "target" below depends on whether it is a static class or instantiated one
-  return function(target: any, name: string, descriptor: PropertyDescriptor) {
+  return function(target: any, name: string, descriptor: PropertyDescriptor) { // return actual function that will be attached
     // what is a descriptor? It's an object that sets options for another object,
     // such as whether it's writable, enumerable, etc.
     descriptor.writable = value;
   }
 }
+/*
+** descriptors are a Js feature that allow you to edit the metadata of a function
+*/
 
-function overwritable(value: boolean) { // property decorator
+function overwritable(value: boolean) { // PROPERTY decorator factory - cannot access descriptor
   return function(target: any, propName: string): any {  // no descriptor here
-    const newDescriptor: PropertyDescriptor = {
+    const newDescriptor: PropertyDescriptor = { // can create new descriptor, but not access existing
       writable: value;
     };
 
@@ -1372,7 +1377,7 @@ function overwritable(value: boolean) { // property decorator
 }
 
 class Project {
-  @overwritable(false); // property decorator
+  @overwritable(false); // property decorator, will actually lock this up & never set property value
   name: string;
 
   constructor(name: string) {
@@ -1390,7 +1395,7 @@ const project = new Project("Learn TypeScript");
 project.calcBudget = () => console.log(2000);
 ```
 
-The property decorator example above is a bit contrived. Usually, you might use property decorators as a listener to read values & react to it. I.E., when something changes "state".
+The property decorator example above is a bit contrived. Usually, you might use property decorators as a listener to read values & react to it. I.E., when something's changes "state".
 
 ```javascript
 // parameter decorators
@@ -1466,7 +1471,7 @@ There are people who already wrote these files.
 - Search `definitely typed` on google, and go to [the github repo](https://github.com/DefinitelyTyped/DefinitelyTyped).
 - Find the specific library defintion you're looking for, and the file w/extension `.d.ts`.
 - Copy the raw contents to a new file in your project folder named `jquery.d.ts`.
-- Ts will automatically find this file & user it during compilation.
+- Ts will automatically find this file & use it during compilation.
 
 #### Option 2: Managing Ts Defition files w/the "typings" Package (or similar)
 
@@ -1553,6 +1558,5 @@ Now `npm run build` runs watch mode & will update any chages using gulp.
 
 > For use with WebPack workflows, you can see the [uDemy course lectures](https://www.udemy.com/understanding-typescript/learn/v4/t/lecture/9662290?start=0)
 
-## Ex: Using Ts w/React
 
 
